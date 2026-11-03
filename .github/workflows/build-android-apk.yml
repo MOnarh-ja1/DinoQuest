@@ -1,21 +1,35 @@
-name: Dino Quest Android APK
+name: Build DinoQuest 2 Android APK
 
 on:
   workflow_dispatch:
   push:
     branches: [main]
+    paths:
+      - "v2/**"
+      - "desktop/**"
+      - ".github/workflows/build-android-apk.yml"
 
 permissions:
   contents: read
 
 jobs:
-  build:
+  android:
     runs-on: ubuntu-24.04
     container:
       image: barichello/godot-ci:4.4.1
     steps:
       - uses: actions/checkout@v4
-      - name: Configure Godot Android templates and SDK
+      - name: Unpack illustrated original game and apply V2 gameplay
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p android_game
+          unzip -q desktop/DinoQuest_Full_Source.zip -d android_game
+          python3 v2/patch_game.py android_game
+          test -s android_game/assets/hero.png
+          test -s android_game/export_presets.cfg
+          test -s android_game/scripts/main.gd
+      - name: Configure Godot Android SDK and templates
         shell: bash
         run: |
           set -euo pipefail
@@ -26,24 +40,26 @@ jobs:
           test -s /root/debug.keystore
           test -d /usr/lib/jvm/java-17-openjdk-amd64
           test -d /usr/lib/android-sdk
-      - name: Import assets and scripts
+      - name: Import and validate scripts
         shell: bash
         run: |
           set -euo pipefail
-          godot --headless --path . --import 2>&1 | tee import.log
-          if grep -E -i '(SCRIPT ERROR|Parser Error|Parse Error)' import.log; then exit 1; fi
-      - name: Export Android debug APK
+          godot --headless --path android_game --import 2>&1 | tee android-import.log
+          if grep -E -i '(SCRIPT ERROR|Parser Error|Parse Error)' android-import.log; then exit 1; fi
+      - name: Export signed debug Android APK
         shell: bash
         run: |
           set -euo pipefail
           mkdir -p build
-          godot --headless --path . --export-debug Android build/DinoQuest.apk 2>&1 | tee export.log
-          if grep -E -i '(SCRIPT ERROR|Parser Error|Parse Error|Export failed)' export.log; then exit 1; fi
+          godot --headless --path android_game --export-debug Android "$PWD/build/DinoQuest.apk" 2>&1 | tee android-export.log
+          if grep -E -i '(SCRIPT ERROR|Parser Error|Parse Error|Export failed)' android-export.log; then exit 1; fi
           test -s build/DinoQuest.apk
           unzip -t build/DinoQuest.apk | tail -1
-      - name: Upload installable APK
+          unzip -Z1 build/DinoQuest.apk | grep -q '^AndroidManifest.xml$'
+      - name: Upload DinoQuest V2 Android APK
         uses: actions/upload-artifact@v4
         with:
-          name: DinoQuest-Android-APK
+          name: DinoQuest-V2-Android-APK
           path: build/DinoQuest.apk
           if-no-files-found: error
+          retention-days: 60
