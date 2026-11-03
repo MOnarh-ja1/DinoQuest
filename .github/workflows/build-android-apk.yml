@@ -1,0 +1,38 @@
+name: Dino Quest Android APK
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-24.04
+    container:
+      image: barichello/godot-ci:4.4.1
+    steps:
+      - uses: actions/checkout@v4
+      - name: Import assets and scripts
+        shell: bash
+        run: |
+          set -euo pipefail
+          godot --headless --path . --import 2>&1 | tee import.log
+          if grep -E -i '(SCRIPT ERROR|Parser Error|Parse Error)' import.log; then exit 1; fi
+      - name: Export Android debug APK
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p build
+          godot --headless --path . --export-debug Android build/DinoQuest.apk 2>&1 | tee export.log
+          if grep -E -i '(SCRIPT ERROR|Parser Error|Parse Error|Export failed)' export.log; then exit 1; fi
+          test -s build/DinoQuest.apk
+          unzip -t build/DinoQuest.apk | tail -1
+      - name: Upload installable APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: DinoQuest-Android-APK
+          path: build/DinoQuest.apk
+          if-no-files-found: error
