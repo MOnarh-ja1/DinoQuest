@@ -59,7 +59,15 @@ jobs:
           if grep -E -i '(SCRIPT ERROR|Parser Error|Parse Error|Export failed)' android-export.log; then exit 1; fi
           test -s build/DinoQuest.apk
           unzip -t build/DinoQuest.apk | tail -1
-          unzip -Z1 build/DinoQuest.apk | grep -q '^AndroidManifest.xml$'
+          unzip -Z1 build/DinoQuest.apk | grep '^AndroidManifest.xml
+      - name: Upload DinoQuest V2 Android APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: DinoQuest-V2-Android-APK
+          path: build/DinoQuest.apk
+          if-no-files-found: error
+          retention-days: 60
+ >/dev/null
       - name: Upload DinoQuest V2 Android APK
         uses: actions/upload-artifact@v4
         with:
