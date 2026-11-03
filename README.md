@@ -12,16 +12,17 @@
 
 ## Скачать
 
-- **ПК (.exe):** [Windows Actions](../../actions/workflows/build-windows-exe.yml) → последний **зелёный** запуск → артефакт `DinoQuest-Windows-EXE`.
+- **ПК (.exe), постоянная ссылка:** [Скачать последнюю версию для Windows](../../releases/latest) → в разделе **Assets** нажать **DinoQuest.exe**. Игра запускается без установленного Godot.
+- **ПК (.exe), архив сборки:** [Windows Actions](../../actions/workflows/build-windows-exe.yml) → последний **зелёный** запуск → артефакт `DinoQuest-Windows-EXE` (ZIP).
 - **Телефон (.apk):** [Android Actions](../../actions/workflows/build-android-apk.yml) → последний **зелёный** запуск → артефакт `DinoQuest-V2-Android-APK`.
 
-GitHub скачивает артефакты в ZIP: распакуйте ZIP, затем запустите файл .exe или .apk соответственно. Для скачивания артефактов GitHub Actions может потребоваться вход в GitHub.
+Файл **DinoQuest.exe** на странице Releases можно скачивать напрямую. Если скачиваете сборку через Actions, GitHub выдаёт ZIP: распакуйте его и запустите EXE. Для скачивания артефактов Actions может потребоваться вход в GitHub.
 
 ## Исходники и сборка
 
 - `desktop/DinoQuest_Full_Source.zip` — иллюстрированный базовый проект;
 - `v2/patch_game.py` — полный набор изменений механик и анимаций версии 2.0;
-- `game_v2/` — итоговый обновлённый проект (синхронизируется успешной Windows-сборкой);
-- `.github/workflows/` — автоматическая сборка EXE и APK из одной базы.
+- `game_v2/` — основной проект Godot 4.4.1, который прямо собирается в Windows EXE;
+- `.github/workflows/` — автоматическая сборка EXE и APK. Windows workflow использует `game_v2/` и при успешной сборке публикует EXE в GitHub Releases.
 
 В корне репозитория сохранены файлы более раннего прототипа. Для открытия актуальной версии в Godot используйте **`game_v2/project.godot`**, а не корневой `project.godot`.
