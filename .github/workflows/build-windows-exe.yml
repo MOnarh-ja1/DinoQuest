@@ -38,6 +38,10 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
+          if ! command -v python3 >/dev/null 2>&1; then
+            apt-get update -qq
+            DEBIAN_FRONTEND=noninteractive apt-get install -y -qq python3
+          fi
           python3 v2/patch_game.py windows_game
 
       - name: Configure Windows export preset
