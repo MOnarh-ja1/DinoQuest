@@ -25,6 +25,10 @@ jobs:
           set -euo pipefail
           mkdir -p android_game
           unzip -q desktop/DinoQuest_Full_Source.zip -d android_game
+          if ! command -v python3 >/dev/null 2>&1; then
+            apt-get update -qq
+            DEBIAN_FRONTEND=noninteractive apt-get install -y -qq python3
+          fi
           python3 v2/patch_game.py android_game
           test -s android_game/assets/hero.png
           test -s android_game/export_presets.cfg
