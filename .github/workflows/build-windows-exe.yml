@@ -1,0 +1,105 @@
+name: Build DinoQuest for Windows EXE
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - "desktop/**"
+      - ".github/workflows/build-windows-exe.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  windows-exe:
+    name: Build illustrated Godot RPG for Windows
+    runs-on: ubuntu-24.04
+    container:
+      image: barichello/godot-ci:4.4.1
+    steps:
+      - name: Checkout project
+        uses: actions/checkout@v4
+
+      - name: Unpack the original illustrated Godot game
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p windows_game
+          unzip -q desktop/DinoQuest_Full_Source.zip -d windows_game
+          test -s windows_game/project.godot
+          test -s windows_game/assets/hero.png
+          test -s windows_game/assets/bg_forest.png
+          test -s windows_game/scripts/main.gd
+          test -s windows_game/scripts/arena.gd
+
+      - name: Configure Windows export preset
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p "$HOME/.local/share/godot/export_templates"
+          cp -a /root/.local/share/godot/export_templates/4.4.1.stable "$HOME/.local/share/godot/export_templates/"
+          ls "$HOME/.local/share/godot/export_templates/4.4.1.stable" | grep -E 'windows_.*x86_64'
+          cat > windows_game/export_presets.cfg <<'PRESET'
+          [preset.0]
+
+          name="Windows Desktop"
+          platform="Windows Desktop"
+          runnable=true
+          advanced_options=false
+          dedicated_server=false
+          custom_features=""
+          export_filter="all_resources"
+          include_filter=""
+          exclude_filter=""
+          export_path="../build/DinoQuest.exe"
+          patches=PackedStringArray()
+          encryption_include_filters=""
+          encryption_exclude_filters=""
+          seed=0
+          encrypt_pck=false
+          encrypt_directory=false
+          script_export_mode=2
+
+          [preset.0.options]
+
+          custom_template/debug=""
+          custom_template/release=""
+          debug/export_console_wrapper=0
+          binary_format/embed_pck=true
+          texture_format/bptc=true
+          texture_format/s3tc=true
+          texture_format/etc=false
+          texture_format/etc2=false
+          codesign/enable=false
+          application/modify_resources=false
+          application/icon=""
+          application/console_wrapper=0
+          PRESET
+
+      - name: Import and check GDScript
+        shell: bash
+        run: |
+          set -euo pipefail
+          godot --headless --path windows_game --import 2>&1 | tee import.log
+          if grep -E -i '(SCRIPT ERROR|Parser Error|Parse Error)' import.log; then exit 1; fi
+
+      - name: Export portable EXE with embedded game files
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p build
+          godot --headless --path windows_game --export-release "Windows Desktop" "$PWD/build/DinoQuest.exe" 2>&1 | tee export.log
+          if grep -E -i '(SCRIPT ERROR|Parser Error|Parse Error|Export failed)' export.log; then exit 1; fi
+          test -s build/DinoQuest.exe
+          file build/DinoQuest.exe | tee windows_file.txt
+          grep -Eq 'PE32|MS Windows' windows_file.txt
+          ls -lh build/DinoQuest.exe
+
+      - name: Upload the Windows EXE
+        uses: actions/upload-artifact@v4
+        with:
+          name: DinoQuest-Windows-EXE
+          path: build/DinoQuest.exe
+          if-no-files-found: error
+          retention-days: 60
