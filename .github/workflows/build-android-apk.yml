@@ -15,6 +15,17 @@ jobs:
       image: barichello/godot-ci:4.4.1
     steps:
       - uses: actions/checkout@v4
+      - name: Configure Godot Android templates and SDK
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p "$HOME/.local/share/godot/export_templates" "$HOME/.config"
+          cp -a /root/.local/share/godot/export_templates/4.4.1.stable "$HOME/.local/share/godot/export_templates/"
+          cp -a /root/.config/godot "$HOME/.config/"
+          test -s "$HOME/.local/share/godot/export_templates/4.4.1.stable/android_debug.apk"
+          test -s /root/debug.keystore
+          test -d /usr/lib/jvm/java-17-openjdk-amd64
+          test -d /usr/lib/android-sdk
       - name: Import assets and scripts
         shell: bash
         run: |
