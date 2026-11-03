@@ -14,7 +14,8 @@ func _draw() -> void:
     var h: float = size.y
     if w < 10 or h < 10:
         return
-    var boss: bool = int(get_parent().get_parent().get_parent().game["stage"]) % 5 == 0
+    var game_data: Dictionary = get_parent().get_parent().get_parent().get("game")
+    var boss: bool = int(game_data["stage"]) % 5 == 0
     draw_rect(Rect2(Vector2.ZERO, size), Color("#173f50"))
     draw_circle(Vector2(w * 0.85,h * 0.18), h * 0.21, Color("#376777"))
     draw_circle(Vector2(w * 0.85,h * 0.18), h * 0.15, Color("#5a8b8a"))
@@ -33,8 +34,8 @@ func _draw() -> void:
     var ey := h * 0.63 + sin(t * 2.6) * 5.0
     _monster(Vector2(ex,ey), minf(w,h) * (0.30 if boss else 0.23), boss)
     var root: Control = get_parent().get_parent().get_parent()
-    var hero_ratio: float = clampf(root.hero_hp / root._max_hp(),0.0,1.0)
-    var enemy_ratio: float = clampf(root.enemy_hp / root.enemy_max,0.0,1.0)
+    var hero_ratio: float = clampf(float(root.get("hero_hp")) / float(root.call("_max_hp")),0.0,1.0)
+    var enemy_ratio: float = clampf(float(root.get("enemy_hp")) / float(root.get("enemy_max")),0.0,1.0)
     _bar(Vector2(w * 0.09,h * 0.89),w * 0.34,hero_ratio,Color("#7be8a1"))
     _bar(Vector2(w * 0.57,h * 0.89),w * 0.34,enemy_ratio,Color("#f6a178"))
 
