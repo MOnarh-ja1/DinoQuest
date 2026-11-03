@@ -368,7 +368,7 @@ func _update_options() -> void:
         options.add_child(_label("Оружие +" + str(int(game["weapon"]) * 8) + "   •   Сундуков: " + str(game["chests"]), 23, GOLD))
     else:
         for i in range(4):
-            var complete := _quest_progress(i) >= QUEST_NEED[i]
+            var complete: bool = _quest_progress(i) >= int(QUEST_NEED[i])
             var claimed := bool(game["quests"][i])
             var status := "ПОЛУЧЕНО" if claimed else ("ЗАБРАТЬ" if complete else str(_quest_progress(i)) + "/" + str(QUEST_NEED[i]))
             var button := _make_button(QUEST_NAMES[i] + "  •  " + status, Color("#356e67") if complete else Color("#294959"), 59)
