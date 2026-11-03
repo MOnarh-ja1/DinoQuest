@@ -84,6 +84,13 @@ jobs:
           godot --headless --path windows_game --import 2>&1 | tee import.log
           if grep -E -i '(SCRIPT ERROR|Parser Error|Parse Error)' import.log; then exit 1; fi
 
+      - name: Smoke-test game startup (headless)
+        shell: bash
+        run: |
+          set -euo pipefail
+          godot --headless --path windows_game --quit-after 90 2>&1 | tee runtime.log
+          if grep -E -i '(SCRIPT ERROR|Invalid call|Parse Error|Parser Error)' runtime.log; then exit 1; fi
+
       - name: Export portable EXE with embedded game files
         shell: bash
         run: |
@@ -92,8 +99,7 @@ jobs:
           godot --headless --path windows_game --export-release "Windows Desktop" "$PWD/build/DinoQuest.exe" 2>&1 | tee export.log
           if grep -E -i '(SCRIPT ERROR|Parser Error|Parse Error|Export failed)' export.log; then exit 1; fi
           test -s build/DinoQuest.exe
-          file build/DinoQuest.exe | tee windows_file.txt
-          grep -Eq 'PE32|MS Windows' windows_file.txt
+          python3 -c 'from pathlib import Path; p=Path("build/DinoQuest.exe"); b=p.open("rb").read(2); print("Windows EXE MZ header:",b,"size:",p.stat().st_size); assert b==b"MZ" and p.stat().st_size>10000000'
           ls -lh build/DinoQuest.exe
 
       - name: Upload the Windows EXE
