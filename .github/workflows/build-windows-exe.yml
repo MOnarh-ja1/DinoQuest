@@ -33,6 +33,11 @@ jobs:
           test -s game_v2/assets/hero.png
           test -s game_v2/export_presets.cfg
           test -s /root/.local/share/godot/export_templates/4.4.1.stable/windows_release_x86_64.exe
+          # GitHub Actions sets HOME to /github/home, not /root.
+          # Godot only searches for templates under the effective HOME.
+          mkdir -p "$HOME/.local/share/godot/export_templates"
+          cp -a /root/.local/share/godot/export_templates/4.4.1.stable "$HOME/.local/share/godot/export_templates/"
+          test -s "$HOME/.local/share/godot/export_templates/4.4.1.stable/windows_release_x86_64.exe"
 
       - name: Import assets and check GDScript
         shell: bash
