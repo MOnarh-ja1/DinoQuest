@@ -99,7 +99,10 @@ jobs:
           godot --headless --path windows_game --export-release "Windows Desktop" "$PWD/build/DinoQuest.exe" 2>&1 | tee export.log
           if grep -E -i '(SCRIPT ERROR|Parser Error|Parse Error|Export failed)' export.log; then exit 1; fi
           test -s build/DinoQuest.exe
-          python3 -c 'from pathlib import Path; p=Path("build/DinoQuest.exe"); b=p.open("rb").read(2); print("Windows EXE MZ header:",b,"size:",p.stat().st_size); assert b==b"MZ" and p.stat().st_size>10000000'
+          test "$(head -c 2 build/DinoQuest.exe)" = "MZ"
+          EXE_BYTES=$(wc -c < build/DinoQuest.exe)
+          test "$EXE_BYTES" -gt 10000000
+          echo "Verified Windows EXE: $EXE_BYTES bytes, MZ header present"
           ls -lh build/DinoQuest.exe
 
       - name: Upload the Windows EXE
