@@ -116,21 +116,25 @@ jobs:
           echo "Verified Windows EXE: $EXE_BYTES bytes, MZ header present"
           ls -lh build/DinoQuest.exe
 
-      - name: Sync edited Godot V2 source into the repository
+      - name: Sync updated Godot V2 source into the repository
         shell: bash
         continue-on-error: true
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           set -euo pipefail
-          mkdir -p game_v2
-          rm -rf game_v2/assets game_v2/scripts game_v2/scenes
-          cp -a windows_game/assets windows_game/scripts windows_game/scenes game_v2/
-          cp windows_game/project.godot windows_game/icon.svg windows_game/export_presets.cfg game_v2/
-          git config user.name 'github-actions[bot]'
-          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
-          git add game_v2
-          if ! git diff --cached --quiet; then
-            git commit -m 'Publish illustrated DinoQuest V2 source [skip ci]'
-            git push origin HEAD:main
+          PUB_DIR="$(mktemp -d)"
+          git clone --depth 1 "https://x-access-token:${GITHUB_TOKEN}@github.com/${GITHUB_REPOSITORY}.git" "$PUB_DIR"
+          mkdir -p "$PUB_DIR/game_v2"
+          rm -rf "$PUB_DIR/game_v2/assets" "$PUB_DIR/game_v2/scripts" "$PUB_DIR/game_v2/scenes"
+          cp -a windows_game/assets windows_game/scripts windows_game/scenes "$PUB_DIR/game_v2/"
+          cp windows_game/project.godot windows_game/icon.svg windows_game/export_presets.cfg "$PUB_DIR/game_v2/"
+          git -C "$PUB_DIR" config user.name 'github-actions[bot]'
+          git -C "$PUB_DIR" config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git -C "$PUB_DIR" add game_v2
+          if ! git -C "$PUB_DIR" diff --cached --quiet; then
+            git -C "$PUB_DIR" commit -m 'Publish illustrated DinoQuest V2 source [skip ci]'
+            git -C "$PUB_DIR" push origin HEAD:main
           fi
 
       - name: Upload the Windows EXE
