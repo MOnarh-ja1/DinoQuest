@@ -1,146 +1,85 @@
-name: Build DinoQuest 2 for Windows EXE
+name: Build DinoQuest for Windows (.exe)
 
 on:
   workflow_dispatch:
   push:
     branches: [main]
     paths:
-      - "desktop/**"
-      - "v2/**"
+      - "game_v2/**"
       - ".github/workflows/build-windows-exe.yml"
 
 permissions:
   contents: write
 
 jobs:
-  windows-exe:
-    name: Build illustrated Godot RPG for Windows
+  windows:
+    name: Export Godot 4.4.1 for Windows x64
     runs-on: ubuntu-24.04
     container:
       image: barichello/godot-ci:4.4.1
     steps:
-      - name: Checkout project
+      - name: Checkout sources
         uses: actions/checkout@v4
 
-      - name: Unpack the original illustrated Godot game
+      - name: Check game and export templates
         shell: bash
         run: |
           set -euo pipefail
-          mkdir -p windows_game
-          unzip -q desktop/DinoQuest_Full_Source.zip -d windows_game
-          test -s windows_game/project.godot
-          test -s windows_game/assets/hero.png
-          test -s windows_game/assets/bg_forest.png
-          test -s windows_game/scripts/main.gd
-          test -s windows_game/scripts/arena.gd
+          godot --version
+          test -s game_v2/project.godot
+          test -s game_v2/scenes/main.tscn
+          test -s game_v2/scripts/main.gd
+          test -s game_v2/scripts/arena.gd
+          test -s game_v2/assets/hero.png
+          test -s game_v2/export_presets.cfg
+          test -s /root/.local/share/godot/export_templates/4.4.1.stable/windows_release_x86_64.exe
 
-      - name: Apply version 2 gameplay to illustrated source
+      - name: Import assets and check GDScript
         shell: bash
         run: |
           set -euo pipefail
-          if ! command -v python3 >/dev/null 2>&1; then
-            apt-get update -qq
-            DEBIAN_FRONTEND=noninteractive apt-get install -y -qq python3
-          fi
-          python3 v2/patch_game.py windows_game
+          godot --headless --path game_v2 --import 2>&1 | tee import.log
+          if grep -Ei '(SCRIPT ERROR|Parser Error|Parse Error)' import.log; then exit 1; fi
 
-      - name: Configure Windows export preset
+      - name: Test game startup
         shell: bash
         run: |
           set -euo pipefail
-          mkdir -p "$HOME/.local/share/godot/export_templates"
-          cp -a /root/.local/share/godot/export_templates/4.4.1.stable "$HOME/.local/share/godot/export_templates/"
-          ls "$HOME/.local/share/godot/export_templates/4.4.1.stable" | grep -E 'windows_.*x86_64'
-          cat > windows_game/export_presets.cfg <<'PRESET'
-          [preset.0]
+          godot --headless --path game_v2 --quit-after 90 2>&1 | tee runtime.log
+          if grep -Ei '(SCRIPT ERROR|Invalid call|Parser Error|Parse Error)' runtime.log; then exit 1; fi
 
-          name="Windows Desktop"
-          platform="Windows Desktop"
-          runnable=true
-          advanced_options=false
-          dedicated_server=false
-          custom_features=""
-          export_filter="all_resources"
-          include_filter=""
-          exclude_filter=""
-          export_path="../build/DinoQuest.exe"
-          patches=PackedStringArray()
-          encryption_include_filters=""
-          encryption_exclude_filters=""
-          seed=0
-          encrypt_pck=false
-          encrypt_directory=false
-          script_export_mode=2
-
-          [preset.0.options]
-
-          custom_template/debug=""
-          custom_template/release=""
-          debug/export_console_wrapper=0
-          binary_format/embed_pck=true
-          texture_format/bptc=true
-          texture_format/s3tc=true
-          texture_format/etc=false
-          texture_format/etc2=false
-          codesign/enable=false
-          application/modify_resources=false
-          application/icon=""
-          application/console_wrapper=0
-          PRESET
-
-      - name: Import and check GDScript
-        shell: bash
-        run: |
-          set -euo pipefail
-          godot --headless --path windows_game --import 2>&1 | tee import.log
-          if grep -E -i '(SCRIPT ERROR|Parser Error|Parse Error)' import.log; then exit 1; fi
-
-      - name: Smoke-test game startup (headless)
-        shell: bash
-        run: |
-          set -euo pipefail
-          godot --headless --path windows_game --quit-after 90 2>&1 | tee runtime.log
-          if grep -E -i '(SCRIPT ERROR|Invalid call|Parse Error|Parser Error)' runtime.log; then exit 1; fi
-
-      - name: Export portable EXE with embedded game files
+      - name: Export standalone Windows EXE
         shell: bash
         run: |
           set -euo pipefail
           mkdir -p build
-          godot --headless --path windows_game --export-release "Windows Desktop" "$PWD/build/DinoQuest.exe" 2>&1 | tee export.log
-          if grep -E -i '(SCRIPT ERROR|Parser Error|Parse Error|Export failed)' export.log; then exit 1; fi
+          godot --headless --path game_v2 --export-release "Windows Desktop" "$PWD/build/DinoQuest.exe" 2>&1 | tee export.log
+          if grep -Ei '(SCRIPT ERROR|Parser Error|Parse Error|Export failed)' export.log; then exit 1; fi
           test -s build/DinoQuest.exe
           test "$(head -c 2 build/DinoQuest.exe)" = "MZ"
-          EXE_BYTES=$(wc -c < build/DinoQuest.exe)
-          test "$EXE_BYTES" -gt 10000000
-          echo "Verified Windows EXE: $EXE_BYTES bytes, MZ header present"
+          test "$(wc -c < build/DinoQuest.exe)" -gt 10000000
           ls -lh build/DinoQuest.exe
 
-      - name: Sync updated Godot V2 source into the repository
-        shell: bash
-        continue-on-error: true
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: |
-          set -euo pipefail
-          PUB_DIR="$(mktemp -d)"
-          git clone --depth 1 "https://x-access-token:${GITHUB_TOKEN}@github.com/${GITHUB_REPOSITORY}.git" "$PUB_DIR"
-          mkdir -p "$PUB_DIR/game_v2"
-          rm -rf "$PUB_DIR/game_v2/assets" "$PUB_DIR/game_v2/scripts" "$PUB_DIR/game_v2/scenes"
-          cp -a windows_game/assets windows_game/scripts windows_game/scenes "$PUB_DIR/game_v2/"
-          cp windows_game/project.godot windows_game/icon.svg windows_game/export_presets.cfg "$PUB_DIR/game_v2/"
-          git -C "$PUB_DIR" config user.name 'github-actions[bot]'
-          git -C "$PUB_DIR" config user.email '41898282+github-actions[bot]@users.noreply.github.com'
-          git -C "$PUB_DIR" add game_v2
-          if ! git -C "$PUB_DIR" diff --cached --quiet; then
-            git -C "$PUB_DIR" commit -m 'Publish illustrated DinoQuest V2 source [skip ci]'
-            git -C "$PUB_DIR" push origin HEAD:main
-          fi
-
-      - name: Upload the Windows EXE
+      - name: Upload Windows EXE as workflow artifact
         uses: actions/upload-artifact@v4
         with:
           name: DinoQuest-Windows-EXE
           path: build/DinoQuest.exe
           if-no-files-found: error
           retention-days: 60
+
+      - name: Publish Windows EXE on GitHub Releases
+        if: github.ref == 'refs/heads/main'
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: windows-${{ github.run_number }}
+          name: DinoQuest for Windows — build ${{ github.run_number }}
+          body: |
+            DinoQuest, a standalone Godot RPG for Windows 10/11 (64-bit).
+            Download DinoQuest.exe below and run it. Godot is not required.
+            Built automatically from the game_v2/ source folder.
+          make_latest: true
+          draft: false
+          prerelease: false
+          files: build/DinoQuest.exe
+          fail_on_unmatched_files: true
