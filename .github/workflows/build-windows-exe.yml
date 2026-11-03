@@ -1,4 +1,4 @@
-name: Build DinoQuest for Windows EXE
+name: Build DinoQuest 2 for Windows EXE
 
 on:
   workflow_dispatch:
@@ -6,6 +6,7 @@ on:
     branches: [main]
     paths:
       - "desktop/**"
+      - "v2/**"
       - ".github/workflows/build-windows-exe.yml"
 
 permissions:
@@ -32,6 +33,12 @@ jobs:
           test -s windows_game/assets/bg_forest.png
           test -s windows_game/scripts/main.gd
           test -s windows_game/scripts/arena.gd
+
+      - name: Apply version 2 gameplay to illustrated source
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 v2/patch_game.py windows_game
 
       - name: Configure Windows export preset
         shell: bash
